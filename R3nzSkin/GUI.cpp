@@ -23,13 +23,42 @@ inline static void footer() noexcept
 	ImGui::textUnformattedCentered("Copyright (C) 2021-2024 R3nzTheCodeGOD");
 }
 
+static void drawSignatureReport(const char* label, const SignatureScanReport& report) noexcept
+{
+	ImGui::Text("%s: %s", label, report.signatureSet.c_str());
+	ImGui::Text("Attempted: %s | Success: %s | Missing: %d",
+		report.attempted ? "Yes" : "No",
+		report.success ? "Yes" : "No",
+		static_cast<int>(report.missing.size()));
+
+	ImGui::BeginChild(label, ImVec2(520.0f, 150.0f), true);
+	if (report.entries.empty()) {
+		ImGui::TextDisabled("No signature scan has been recorded.");
+	} else {
+		for (const auto& entry : report.entries) {
+			if (entry.found) {
+				ImGui::TextColored(ImVec4(0.45f, 0.85f, 0.45f, 1.0f), "[OK] %s", entry.name.c_str());
+				ImGui::SameLine();
+				ImGui::TextDisabled("0x%p", reinterpret_cast<void*>(entry.address));
+			} else {
+				ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.35f, 1.0f), "[MISSING] %s", entry.name.c_str());
+			}
+		}
+	}
+	ImGui::EndChild();
+}
+
 static void changeTurretSkin(const std::int32_t skinId, const std::int32_t team) noexcept
 {
-	if (skinId == -1)
+	if (skinId == -1 || !cheatManager.profile->features.turretSkins)
 		return;
 
 	const auto turrets{ cheatManager.memory->turretList };
-	const auto playerTeam{ cheatManager.memory->localPlayer->get_team() };
+	const auto player{ cheatManager.memory->localPlayer };
+	if (!turrets || !player)
+		return;
+
+	const auto playerTeam{ player->get_team() };
 
 	for (auto i{ 0u }; i < turrets->length; ++i) {
 		if (const auto turret{ turrets->list[i] }; turret->get_team() == team) {
@@ -53,6 +82,7 @@ void GUI::render() noexcept
 
 	const auto player{ cheatManager.memory->localPlayer };
 	const auto heroes{ cheatManager.memory->heroList };
+	const auto& features{ cheatManager.profile->features };
 	static const auto my_team{ player ? player->get_team() : 100 };
 	static int gear{ player ? player->get_character_data_stack()->base_skin.gear : 0 };
 
@@ -93,6 +123,7 @@ void GUI::render() noexcept
 					auto& values{ cheatManager.database->champions_skins[fnv::hash_runtime(player->get_character_data_stack()->base_skin.model.str)] };
 					ImGui::Text("Player Skins Settings:");
 
+					ImGui::BeginDisabled(!features.localPlayerSkins);
 					if (ImGui::Combo("Current Skin", &cheatManager.config->current_combo_skin_index, vector_getter_skin, static_cast<void*>(&values), values.size() + 1))
 						if (cheatManager.config->current_combo_skin_index > 0)
 							player->change_skin(values[cheatManager.config->current_combo_skin_index - 1].model_name, values[cheatManager.config->current_combo_skin_index - 1].skin_id);
@@ -114,16 +145,19 @@ void GUI::render() noexcept
 						}
 						ImGui::Separator();
 					}
+					ImGui::EndDisabled();
 
+					ImGui::BeginDisabled(!features.wardSkins);
 					if (ImGui::Combo("Current Ward Skin", &cheatManager.config->current_combo_ward_index, vector_getter_ward_skin, static_cast<void*>(&cheatManager.database->wards_skins), cheatManager.database->wards_skins.size() + 1))
 						cheatManager.config->current_ward_skin_index = cheatManager.config->current_combo_ward_index == 0 ? -1 : cheatManager.database->wards_skins.at(cheatManager.config->current_combo_ward_index - 1).first;
+					ImGui::EndDisabled();
 					footer();
 					ImGui::EndTabItem();
 				}
 			}
 
-			static std::int32_t temp_heroes_length = heroes->length;
-			if (temp_heroes_length > 1)
+			static std::int32_t temp_heroes_length = heroes ? heroes->length : 0;
+			if (features.otherChampionSkins && heroes && temp_heroes_length > 1)
 			{
 				if (ImGui::BeginTabItem("Other Champs")) {
 					ImGui::Text("Other Champs Skins Settings:");
@@ -174,14 +208,19 @@ void GUI::render() noexcept
 
 			if (ImGui::BeginTabItem("Global Skins")) {
 				ImGui::Text("Global Skins Settings:");
+				ImGui::BeginDisabled(!features.minionSkins);
 				if (ImGui::Combo("Minion Skins:", &cheatManager.config->current_combo_minion_index, vector_getter_default, static_cast<void*>(&cheatManager.database->minions_skins), cheatManager.database->minions_skins.size() + 1))
 					cheatManager.config->current_minion_skin_index = cheatManager.config->current_combo_minion_index - 1;
+				ImGui::EndDisabled();
 				ImGui::Separator();
+				ImGui::BeginDisabled(!features.turretSkins);
 				if (ImGui::Combo("Order Turret Skins:", &cheatManager.config->current_combo_order_turret_index, vector_getter_default, static_cast<void*>(&cheatManager.database->turret_skins), cheatManager.database->turret_skins.size() + 1))
 					changeTurretSkin(cheatManager.config->current_combo_order_turret_index - 1, 100);
 				if (ImGui::Combo("Chaos Turret Skins:", &cheatManager.config->current_combo_chaos_turret_index, vector_getter_default, static_cast<void*>(&cheatManager.database->turret_skins), cheatManager.database->turret_skins.size() + 1))
 					changeTurretSkin(cheatManager.config->current_combo_chaos_turret_index - 1, 200);
+				ImGui::EndDisabled();
 				ImGui::Separator();
+				ImGui::BeginDisabled(!features.jungleMobSkins);
 				ImGui::Text("Jungle Mobs Skins Settings:");
 				for (auto& [name, name_hashes, skins] : cheatManager.database->jungle_mobs_skins) {
 					std::snprintf(str_buffer, 256, "Current %s skin", name);
@@ -190,6 +229,44 @@ void GUI::render() noexcept
 						for (const auto& hash : name_hashes)
 							cheatManager.config->current_combo_jungle_mob_skin_index[hash] = fst->second;
 				}
+				ImGui::EndDisabled();
+				footer();
+				ImGui::EndTabItem();
+			}
+
+			if (ImGui::BeginTabItem("Compatibility")) {
+				const auto& profile{ *cheatManager.profile };
+				ImGui::Text("Region: %s", toString(profile.serverRegion));
+				ImGui::Text("Build: %s | %s", profile.buildConfiguration.c_str(), profile.buildArchitecture.c_str());
+				ImGui::Text("Client Version: %s", profile.clientVersion.c_str());
+				ImGui::Text("Signature Set: %s", profile.signatureSet.c_str());
+				ImGui::Text("Module Base: 0x%p", reinterpret_cast<void*>(profile.moduleBase));
+				ImGui::Text("Startup Stage: %s", toString(profile.stage));
+				if (!profile.stageDetail.empty())
+					ImGui::TextWrapped("Stage Detail: %s", profile.stageDetail.c_str());
+
+				if (profile.failed) {
+					ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.35f, 1.0f), "Failure Stage: %s", profile.failureStage.c_str());
+					ImGui::TextWrapped("%s", profile.failureReason.c_str());
+				}
+
+				ImGui::Separator();
+				ImGui::Text("Runtime Injection Boundary: %s", profile.boundary.injectionAllowed ? "Allowed" : "Blocked");
+				ImGui::TextWrapped("%s", profile.boundary.reason.c_str());
+				for (const auto& evidence : profile.boundary.evidence)
+					ImGui::BulletText("%s", evidence.c_str());
+
+				ImGui::Separator();
+				drawSignatureReport("Game Client Signatures", profile.gameClientSignatures);
+				drawSignatureReport("Runtime Signatures", profile.runtimeSignatures);
+
+				if (ImGui::Button("Write Diagnostic Snapshot"))
+					(void)writeCompatibilityReport(*cheatManager.profile);
+				if (!profile.diagnosticPath.empty()) {
+					ImGui::SameLine();
+					ImGui::TextDisabled("%s", profile.diagnosticPath.c_str());
+				}
+
 				footer();
 				ImGui::EndTabItem();
 			}

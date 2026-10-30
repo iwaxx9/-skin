@@ -1,10 +1,9 @@
 #pragma warning(disable: 28182 6011)
 
 #include <Windows.h>
-#include <chrono>
 #include <cstdint>
+#include <exception>
 #include <string>
-#include <thread>
 #include <vector>
 
 #include "CheatManager.hpp"
@@ -14,6 +13,8 @@
 [[nodiscard]] static std::uint8_t* find_signature(const wchar_t* szModule, const char* szSignature) noexcept
 {
 	const auto module{ ::GetModuleHandleW(szModule) };
+	if (!module)
+		return nullptr;
 
 	using bytes_t = std::vector<std::int32_t>;
 
@@ -38,7 +39,13 @@
 	};
 
 	const auto dosHeader{ reinterpret_cast<PIMAGE_DOS_HEADER>(module) };
+	if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE)
+		return nullptr;
+
 	const auto ntHeaders{ reinterpret_cast<PIMAGE_NT_HEADERS>(reinterpret_cast<std::uint8_t*>(module) + dosHeader->e_lfanew) };
+	if (ntHeaders->Signature != IMAGE_NT_SIGNATURE)
+		return nullptr;
+
 	const auto textSection{ IMAGE_FIRST_SECTION(ntHeaders) };
 
 	const auto sizeOfImage{ textSection->SizeOfRawData };
@@ -83,6 +90,62 @@
 
 }
 
+std::vector<offset_signature>& Memory::selectedRuntimeSignatures() noexcept
+{
+	if (cheatManager.profile && cheatManager.profile->serverRegion == ServerRegion::ChinaServer)
+		return this->chinaRuntimeSignatures;
+
+	return this->riotRuntimeSignatures;
+}
+
+SignatureScanReport Memory::resolveSignatures(const std::vector<offset_signature>& signatures, const std::string& signatureSet) noexcept
+{
+	SignatureScanReport report{};
+	report.signatureSet = signatureSet;
+	report.attempted = true;
+
+	for (const auto& signature : signatures)
+		*signature.offset = 0;
+
+	for (const auto& signature : signatures) {
+		SignatureStatus status{};
+		status.name = signature.name;
+
+		for (const auto& pattern : signature.pattern) {
+			auto address{ find_signature(nullptr, pattern.c_str()) };
+			if (!address)
+				continue;
+
+			status.found = true;
+			status.matchedPattern = pattern;
+
+			if (signature.read) {
+				address = *reinterpret_cast<std::uint8_t**>(address + (pattern.find_first_of('?') / 3));
+			} else if (signature.relative) {
+				address += static_cast<std::intptr_t>(*reinterpret_cast<std::int32_t*>(address + 3)) + 7;
+			} else if (address[0] == 0xE8) {
+				address += static_cast<std::intptr_t>(*reinterpret_cast<std::int32_t*>(address + 1)) + 5;
+			}
+
+			status.address = reinterpret_cast<std::uintptr_t>(address);
+			if (signature.sub_base)
+				address -= this->base;
+
+			address += signature.additional;
+			*signature.offset = reinterpret_cast<std::uint64_t>(address);
+			break;
+		}
+
+		if (!status.found)
+			report.missing.push_back(signature.name);
+
+		report.entries.push_back(std::move(status));
+	}
+
+	report.success = report.missing.empty();
+	return report;
+}
+
 void Memory::update(bool gameClient) noexcept
 {
 	if (gameClient) {
@@ -100,63 +163,37 @@ void Memory::update(bool gameClient) noexcept
 	}
 }
 
-void Memory::Search(bool gameClient)
+bool Memory::Search(bool gameClient) noexcept
 {
-	using namespace std::chrono_literals;
-
 	try {
 		this->base = reinterpret_cast<std::uintptr_t>(::GetModuleHandle(nullptr));
-		const auto& signatureToSearch{ (gameClient ? this->gameClientSig : this->sigs) };
+		if (!this->base)
+			return false;
 
-		for (const auto& sig : signatureToSearch)
-			*sig.offset = 0;
+		auto report{ gameClient
+			? resolveSignatures(this->gameClientSig, "game-client-v1")
+			: resolveSignatures(selectedRuntimeSignatures(), cheatManager.profile ? cheatManager.profile->signatureSet : "unknown") };
 
-		while (true) {
-			bool missing_offset{ false };
-			for (auto& sig : signatureToSearch) {
-
-				if (*sig.offset != 0)
-					continue;
-
-				for (auto& pattern : sig.pattern) {
-					auto address{ find_signature(nullptr, pattern.c_str()) };
-
-					if (!address) {
-						::MessageBoxA(nullptr, ("Failed to find pattern: " + pattern).c_str(), "R3nzSkin", MB_OK | MB_ICONWARNING);
-						// cheatManager.logger->addLog("Not found: %s\n", pattern.c_str());
-						continue;
-					}
-
-					if (sig.read)
-						address = *reinterpret_cast<std::uint8_t**>(address + (pattern.find_first_of('?') / 3));
-					else if (sig.relative)
-						address = address + *reinterpret_cast<std::uint32_t*>(address + 3) + 7;
-					else if (address[0] == 0xE8)
-						address = address + *reinterpret_cast<std::uint32_t*>(address + 1) + 5;
-
-					if (sig.sub_base)
-						address -= this->base;
-
-					address += sig.additional;
-
-					*sig.offset = reinterpret_cast<std::uint32_t>(address);
-					// cheatManager.logger->addLog("Found: %s\n\tAddress: 0x%X\n", pattern.c_str(), *sig.offset);
-					break;
-				}
-
-				if (!*sig.offset) {
-					missing_offset = true;
-					break;
-				}
-			}
-
-			if (!missing_offset)
-				break;
-
-			std::this_thread::sleep_for(2s);
+		if (cheatManager.profile) {
+			cheatManager.profile->moduleBase = this->base;
+			if (gameClient)
+				cheatManager.profile->gameClientSignatures = report;
+			else
+				cheatManager.profile->runtimeSignatures = report;
 		}
+
+		if (!report.success)
+			return false;
+
 		this->update(gameClient);
+		return true;
 	} catch (const std::exception& e) {
-		::MessageBoxA(nullptr, e.what(), "R3nzSkin", MB_OK | MB_ICONWARNING);
+		if (cheatManager.profile) {
+			auto& report{ gameClient ? cheatManager.profile->gameClientSignatures : cheatManager.profile->runtimeSignatures };
+			report.attempted = true;
+			report.success = false;
+			report.missing.push_back(e.what());
+		}
+		return false;
 	}
 }

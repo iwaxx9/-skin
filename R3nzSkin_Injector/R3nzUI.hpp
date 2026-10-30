@@ -13,10 +13,11 @@ namespace R3nzSkinInjector {
 	using namespace System::Threading;
 	using namespace System::IO;
 
-	static auto btnState{ false };
-	static auto gameState{ false };
-	static auto cheatState{ false };
-	static auto clientState{ false };
+	extern bool btnState;
+	extern bool gameState;
+	extern bool cheatState;
+	extern bool clientState;
+	extern bool compatibilityBlocked;
 
 	delegate String^ MyDelegate();
 	ref class LambdaWrapper sealed
@@ -59,6 +60,15 @@ namespace R3nzSkinInjector {
 		void updateScreen()
 		{
 			while (true) {
+				if (compatibilityBlocked) {
+					this->injectorStatusLabel->Text = L"Blocked";
+					this->injectorStatusLabel->ForeColor = Color::FromArgb(255, 245, 8, 83);
+					this->dllStatusLabel->Text = L"Runtime blocked";
+					this->dllStatusLabel->ForeColor = Color::FromArgb(255, 245, 8, 83);
+					Thread::Sleep(1000);
+					continue;
+				}
+
 				if (clientState) {
 					this->clientStatusLabel->Text = L"Found";
 					this->clientStatusLabel->ForeColor = Color::FromArgb(255, 252, 220, 107);
@@ -143,7 +153,7 @@ namespace R3nzSkinInjector {
 		LinkLabel^ copyrightLabel;
 		System::ComponentModel::Container^ components;
 		NotifyIcon^ notifyIcon;
-		Windows::Forms::ContextMenu^ contextMenu;
+		System::Windows::Forms::ContextMenu^ contextMenu;
 		MenuItem^ menuItem;
 		MenuItem^ menuItem2;
 		MenuStrip^ menuStrip;
@@ -164,7 +174,7 @@ namespace R3nzSkinInjector {
 			   this->dllStatusGroupBox = gcnew GroupBox();
 			   this->copyrightLabel = gcnew LinkLabel();
 			   this->notifyIcon = gcnew NotifyIcon();
-			   this->contextMenu = gcnew Windows::Forms::ContextMenu();
+			   this->contextMenu = gcnew System::Windows::Forms::ContextMenu();
 			   this->menuItem = gcnew MenuItem();
 			   this->menuItem2 = gcnew MenuItem();
 			   this->menuStrip = gcnew MenuStrip();
@@ -337,7 +347,7 @@ namespace R3nzSkinInjector {
 			   // R3nzUI
 			   // 
 			   this->AutoScaleDimensions = SizeF(7, 14);
-			   this->AutoScaleMode = Windows::Forms::AutoScaleMode::Font;
+			   this->AutoScaleMode = System::Windows::Forms::AutoScaleMode::Font;
 			   this->BackColor = Color::FromArgb(32, 30, 30);
 			   this->ClientSize = Drawing::Size(273, 307);
 			   this->Controls->Add(this->menuStrip);
@@ -349,11 +359,11 @@ namespace R3nzSkinInjector {
 			   this->Controls->Add(this->startButton);
 			   this->Cursor = Cursors::Arrow;
 			   this->Font = gcnew Drawing::Font(L"Arial", 8.25F, FontStyle::Bold, GraphicsUnit::Point, static_cast<Byte>(162));
-			   this->FormBorderStyle = Windows::Forms::FormBorderStyle::Fixed3D;
+			   this->FormBorderStyle = System::Windows::Forms::FormBorderStyle::Fixed3D;
 			   this->Icon = cli::safe_cast<Drawing::Icon^>(resources->GetObject(L"$this.Icon"));
 			   this->MaximizeBox = false;
 			   this->Name = L"R3nzUI";
-			   this->RightToLeft = Windows::Forms::RightToLeft::No;
+			   this->RightToLeft = System::Windows::Forms::RightToLeft::No;
 			   this->Text = L"";
 			   this->Load += gcnew EventHandler(this, &R3nzUI::R3nzUI_Load);
 			   this->Resize += gcnew EventHandler(this, &R3nzUI::R3nzUI_Resize);

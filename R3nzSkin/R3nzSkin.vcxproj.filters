@@ -35,6 +35,9 @@
     <Filter Include="Source Files\Config">
       <UniqueIdentifier>{a2d7fdd0-5331-4fcc-95c6-864f9d9d19bf}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Compatibility">
+      <UniqueIdentifier>{33b48af5-70c2-41f6-b0a8-5c92eb9f8f90}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="R3nzSkin.cpp" />
@@ -46,6 +49,9 @@
     </ClCompile>
     <ClCompile Include="Memory.cpp">
       <Filter>Source Files\Memory</Filter>
+    </ClCompile>
+    <ClCompile Include="RuntimeProfile.cpp">
+      <Filter>Source Files\Compatibility</Filter>
     </ClCompile>
     <ClCompile Include="Hooks.cpp">
       <Filter>Source Files\Hooks</Filter>
@@ -105,6 +111,12 @@
     </ClInclude>
     <ClInclude Include="Memory.hpp">
       <Filter>Source Files\Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="RuntimeProfile.hpp">
+      <Filter>Source Files\Compatibility</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Shared\RuntimeCompatibility.hpp">
+      <Filter>Source Files\Compatibility</Filter>
     </ClInclude>
     <ClInclude Include="Hooks.hpp">
       <Filter>Source Files\Hooks</Filter>

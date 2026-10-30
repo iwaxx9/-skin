@@ -7,6 +7,7 @@
 #include "Hooks.hpp"
 #include "Logger.hpp"
 #include "Memory.hpp"
+#include "RuntimeProfile.hpp"
 #include "SkinDatabase.hpp"
 
 class CheatManager {
@@ -17,6 +18,7 @@ public:
 		this->config = std::make_unique<Config>();
 		this->gui = std::make_unique<GUI>();
 		this->memory = std::make_unique<Memory>();
+		this->profile = std::make_unique<RuntimeProfile>(createRuntimeProfile());
 		this->database = std::make_unique<SkinDatabase>();
 		this->logger = std::make_unique<R3nzSkinLogger>();
 	}
@@ -26,6 +28,7 @@ public:
 	std::unique_ptr<Config> config;
 	std::unique_ptr<GUI> gui;
 	std::unique_ptr<Memory> memory;
+	std::unique_ptr<RuntimeProfile> profile;
 	std::unique_ptr<SkinDatabase> database;
 	std::unique_ptr<R3nzSkinLogger> logger;
 };

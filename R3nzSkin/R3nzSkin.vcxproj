@@ -102,7 +102,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>__SSE__;__SSE2__;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;R3NZSKIN_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>__SSE__;__SSE2__;_CRT_SECURE_NO_WARNINGS;_CHINA;WIN32;NDEBUG;R3NZSKIN_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -125,7 +125,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>__SSE2__;_CRT_SECURE_NO_WARNINGS;WIN32;NDEBUG;R3NZSKIN_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>__SSE2__;_CRT_SECURE_NO_WARNINGS;_CHINA;WIN32;NDEBUG;R3NZSKIN_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -218,6 +218,7 @@
     <ClCompile Include="imgui\imgui_tables.cpp" />
     <ClCompile Include="imgui\imgui_widgets.cpp" />
     <ClCompile Include="Memory.cpp" />
+    <ClCompile Include="RuntimeProfile.cpp" />
     <ClCompile Include="Hooks.cpp" />
     <ClCompile Include="R3nzSkin.cpp" />
     <ClCompile Include="GUI.cpp" />
@@ -241,6 +242,7 @@
     <ClInclude Include="json\json.hpp" />
     <ClInclude Include="Logger.hpp" />
     <ClInclude Include="Memory.hpp" />
+    <ClInclude Include="RuntimeProfile.hpp" />
     <ClInclude Include="Encryption.hpp" />
     <ClInclude Include="fnv_hash.hpp" />
     <ClInclude Include="Hooks.hpp" />
@@ -266,6 +268,7 @@
     <ClInclude Include="SkinDatabase.hpp" />
     <ClInclude Include="Utils.hpp" />
     <ClInclude Include="vmt_smart_hook.hpp" />
+    <ClInclude Include="..\Shared\RuntimeCompatibility.hpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="R3nzSkin.rc" />

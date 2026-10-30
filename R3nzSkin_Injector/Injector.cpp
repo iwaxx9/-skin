@@ -12,12 +12,19 @@
 #include "R3nzUI.hpp"
 #include "xorstr.hpp"
 #include "lazy_importer.hpp"
+#include "../Shared/RuntimeCompatibility.hpp"
 
 using namespace System;
 using namespace System::Windows::Forms;
 using namespace System::Threading;
 using namespace System::Globalization;
 using namespace System::Net;
+
+bool R3nzSkinInjector::btnState{ false };
+bool R3nzSkinInjector::gameState{ false };
+bool R3nzSkinInjector::cheatState{ false };
+bool R3nzSkinInjector::clientState{ false };
+bool R3nzSkinInjector::compatibilityBlocked{ false };
 
 #define xor_clrstr_w(x) msclr::interop::marshal_as<String^>(static_cast<std::wstring>(_XorStrW(x)))
 
@@ -239,7 +246,20 @@ void Injector::autoUpdate()
 void Injector::run() noexcept
 {
 	enableDebugPrivilege();
+	const auto boundary{ detectRuntimeCompatibilityBoundary() };
+	if (!boundary.injectionAllowed) {
+		R3nzSkinInjector::compatibilityBlocked = true;
+		R3nzSkinInjector::cheatState = false;
+		return;
+	}
+
 	while (true) {
+		if (!detectRuntimeCompatibilityBoundary().injectionAllowed) {
+			R3nzSkinInjector::compatibilityBlocked = true;
+			R3nzSkinInjector::cheatState = false;
+			return;
+		}
+
 		const auto& league_client_processes{ Injector::findProcesses(_XorStrW(L"LeagueClient.exe")) };
 		const auto& league_processes{ Injector::findProcesses(_XorStrW(L"League of Legends.exe")) };
 
